@@ -409,7 +409,7 @@ class PDFDocumentProperties {
           name,
           orientation,
         },
-        "{{width}} × {{height}} {{unit}} (" +
+        "{{width}} \u2715 {{height}} {{unit}} (" +
           (name ? "{{name}}, " : "") +
           "{{orientation}})"
       );

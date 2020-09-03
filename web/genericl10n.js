@@ -13,39 +13,40 @@
  * limitations under the License.
  */
 
-import "../external/webL10n/l10n.js";
-
-const webL10n = document.webL10n;
-
 class GenericL10n {
   constructor(lang) {
     this._lang = lang;
-    this._ready = new Promise((resolve, reject) => {
-      webL10n.setLanguage(lang, () => {
-        resolve(webL10n);
-      });
-    });
+    this._ready = Promise.resolve();
   }
 
   async getLanguage() {
-    const l10n = await this._ready;
-    return l10n.getLanguage();
+    return this._lang;
   }
 
   async getDirection() {
-    const l10n = await this._ready;
-    return l10n.getDirection();
+    // http://www.w3.org/International/questions/qa-scripts
+    // Arabic, Hebrew, Farsi, Pashto, Urdu
+    const rtlList = ["ar", "he", "fa", "ps", "ur"];
+    const shortCode = this._lang.split("-", 1)[0];
+    return rtlList.indexOf(shortCode) >= 0 ? "rtl" : "ltr";
   }
 
-  async get(property, args, fallback) {
-    const l10n = await this._ready;
-    return l10n.get(property, args, fallback);
+  async get(key, args, str) {
+    if (args && str && str.indexOf("{") >= 0) {
+      const reArgs = /\{\{\s*(.+?)\s*\}\}/g;
+      str = str.replace(reArgs, function (matched_text, arg) {
+        if (arg in args) {
+          return args[arg];
+        }
+        console.warn("argument {{" + arg + "}} for #" + key + " is undefined.");
+        return matched_text;
+      });
+    }
+
+    return str || "";
   }
 
-  async translate(element) {
-    const l10n = await this._ready;
-    return l10n.translate(element);
-  }
+  async translate(element) {}
 }
 
 export { GenericL10n };

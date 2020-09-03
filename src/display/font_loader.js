@@ -355,7 +355,7 @@ class FontFaceObject {
     for (const i in translatedData) {
       this[i] = translatedData[i];
     }
-    this.isEvalSupported = isEvalSupported !== false;
+    this.isEvalSupported = false;
     this.disableFontFace = disableFontFace === true;
     this.ignoreErrors = ignoreErrors === true;
     this._onUnsupportedFeature = onUnsupportedFeature;
@@ -413,25 +413,6 @@ class FontFaceObject {
       });
     }
 
-    // If we can, compile cmds into JS for MAXIMUM SPEED...
-    if (this.isEvalSupported && IsEvalSupportedCached.value) {
-      let args,
-        js = "";
-      for (let i = 0, ii = cmds.length; i < ii; i++) {
-        current = cmds[i];
-
-        if (current.args !== undefined) {
-          args = current.args.join(",");
-        } else {
-          args = "";
-        }
-        js += "c." + current.cmd + "(" + args + ");\n";
-      }
-      // eslint-disable-next-line no-new-func
-      return (this.compiledGlyphs[character] = new Function("c", "size", js));
-    }
-    // ... but fall back on using Function.prototype.apply() if we're
-    // blocked from using eval() for whatever reason (like CSP policies).
     return (this.compiledGlyphs[character] = function (c, size) {
       for (let i = 0, ii = cmds.length; i < ii; i++) {
         current = cmds[i];

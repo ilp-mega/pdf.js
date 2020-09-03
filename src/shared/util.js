@@ -326,14 +326,14 @@ function getVerbosityLevel() {
 // end users.
 function info(msg) {
   if (verbosity >= VerbosityLevel.INFOS) {
-    console.log(`Info: ${msg}`);
+    console.info.apply(console, arguments);
   }
 }
 
 // Non-fatal warnings.
 function warn(msg) {
   if (verbosity >= VerbosityLevel.WARNINGS) {
-    console.log(`Warning: ${msg}`);
+    console.warn.apply(console, arguments);
   }
 }
 
@@ -571,12 +571,7 @@ const IsLittleEndianCached = {
 
 // Checks if it's possible to eval JS expressions.
 function isEvalSupported() {
-  try {
-    new Function(""); // eslint-disable-line no-new, no-new-func
-    return true;
-  } catch (e) {
-    return false;
-  }
+  return false;
 }
 const IsEvalSupportedCached = {
   get value() {

@@ -655,51 +655,6 @@ class Catalog {
     return shadow(this, "attachments", attachments);
   }
 
-  get javaScript() {
-    const obj = this.catDict.get("Names");
-
-    let javaScript = null;
-    function appendIfJavaScriptDict(jsDict) {
-      const type = jsDict.get("S");
-      if (!isName(type, "JavaScript")) {
-        return;
-      }
-
-      let js = jsDict.get("JS");
-      if (isStream(js)) {
-        js = bytesToString(js.getBytes());
-      } else if (!isString(js)) {
-        return;
-      }
-
-      if (!javaScript) {
-        javaScript = [];
-      }
-      javaScript.push(stringToPDFString(js));
-    }
-
-    if (obj && obj.has("JavaScript")) {
-      const nameTree = new NameTree(obj.getRaw("JavaScript"), this.xref);
-      const names = nameTree.getAll();
-      for (const name in names) {
-        // We don't use most JavaScript in PDF documents. This code is
-        // defensive so we don't cause errors on document load.
-        const jsDict = names[name];
-        if (isDict(jsDict)) {
-          appendIfJavaScriptDict(jsDict);
-        }
-      }
-    }
-
-    // Append OpenAction "JavaScript" actions to the JavaScript array.
-    const openAction = this.catDict.get("OpenAction");
-    if (isDict(openAction) && isName(openAction.get("S"), "JavaScript")) {
-      appendIfJavaScriptDict(openAction);
-    }
-
-    return shadow(this, "javaScript", javaScript);
-  }
-
   fontFallback(id, handler) {
     const promises = [];
     this.fontCache.forEach(function (promise) {
@@ -1062,38 +1017,7 @@ class Catalog {
           break;
 
         case "JavaScript":
-          const jsAction = action.get("JS");
-          let js;
-
-          if (isStream(jsAction)) {
-            js = bytesToString(jsAction.getBytes());
-          } else if (isString(jsAction)) {
-            js = jsAction;
-          }
-
-          if (js) {
-            // Attempt to recover valid URLs from `JS` entries with certain
-            // white-listed formats:
-            //  - window.open('http://example.com')
-            //  - app.launchURL('http://example.com', true)
-            const URL_OPEN_METHODS = ["app.launchURL", "window.open"];
-            const regex = new RegExp(
-              "^\\s*(" +
-                URL_OPEN_METHODS.join("|").split(".").join("\\.") +
-                ")\\((?:'|\")([^'\"]*)(?:'|\")(?:,\\s*(\\w+)\\)|\\))",
-              "i"
-            );
-
-            const jsUrl = regex.exec(stringToPDFString(js));
-            if (jsUrl && jsUrl[2]) {
-              url = jsUrl[2];
-
-              if (jsUrl[3] === "true" && jsUrl[1] === "app.launchURL") {
-                resultObj.newWindow = true;
-              }
-              break;
-            }
-          }
+          break;
         /* falls through */
         default:
           warn(`parseDestDictionary: unsupported action type "${actionName}".`);

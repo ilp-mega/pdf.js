@@ -398,7 +398,7 @@ class WorkerMessageHandler {
         fontExtraProperties: data.fontExtraProperties,
       };
 
-      getPdfManager(data, evaluatorOptions)
+      return getPdfManager(data, evaluatorOptions)
         .then(function (newPdfManager) {
           if (terminated) {
             // We were in a process of setting up the manager, but it got
@@ -471,10 +471,6 @@ class WorkerMessageHandler {
 
     handler.on("GetAttachments", function wphSetupGetAttachments(data) {
       return pdfManager.ensureCatalog("attachments");
-    });
-
-    handler.on("GetJavaScript", function wphSetupGetJavaScript(data) {
-      return pdfManager.ensureCatalog("javaScript");
     });
 
     handler.on("GetOutline", function wphSetupGetOutline(data) {
@@ -651,7 +647,9 @@ class WorkerMessageHandler {
     });
 
     handler.on("Ready", function wphReady(data) {
-      setupDoc(docParams);
+      try {
+        setupDoc(docParams).catch(() => {});
+      } catch (e) {}
       docParams = null; // we don't need docParams anymore -- saving memory.
     });
     return workerHandlerName;

@@ -203,8 +203,8 @@ function webViewerLoad() {
       pdfjsWebAppOptions.AppOptions.set("defaultUrl", defaultUrl);
     }
 
-    window.PDFViewerApplication = pdfjsWebApp.PDFViewerApplication;
-    window.PDFViewerApplicationOptions = pdfjsWebAppOptions.AppOptions;
+    // window.PDFViewerApplication = pdfjsWebApp.PDFViewerApplication;
+    // window.PDFViewerApplicationOptions = pdfjsWebAppOptions.AppOptions;
 
     if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("GENERIC")) {
       // Give custom implementations of the default viewer a simpler way to

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <!--
 Copyright 2012 Mozilla Foundation
 
@@ -24,47 +24,19 @@ See https://github.com/adobe-type-tools/cmap-resources
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<!--#if GENERIC || CHROME-->
     <meta name="google" content="notranslate">
-<!--#endif-->
-<!--#if GENERIC-->
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-<!--#endif-->
     <title>PDF.js viewer</title>
 
-<!--#if MOZCENTRAL-->
-<!--#include viewer-snippet-firefox-extension.html-->
-<!--#endif-->
-<!--#if CHROME-->
-<!--#include viewer-snippet-chrome-extension.html-->
-<!--#endif-->
 
     <link rel="stylesheet" href="viewer.css">
 
-<!--#if !PRODUCTION-->
-    <script defer src="../node_modules/es-module-shims/dist/es-module-shims.js"></script>
-    <script type="importmap-shim">
-      {
-        "imports": {
-          "pdfjs/": "../src/",
-          "pdfjs-lib": "../src/pdf.js",
-          "pdfjs-web/": "./"
-        }
-      }
-    </script>
 
-    <script src="viewer.js" type="module-shim"></script>
-<!--#endif-->
+<!-- This snippet is used in production (included from viewer.html) -->
+<script src="../build/pdf.js"></script>
 
-<!--#if (GENERIC && !MINIFIED) -->
-<!--#include viewer-snippet.html-->
-<!--#endif-->
 
-<!--#if !MINIFIED -->
-<!--<script src="viewer.js"></script>-->
-<!--#else-->
-<!--#include viewer-snippet-minified.html-->
-<!--#endif-->
+  <script src="viewer.js"></script>
 
   </head>
 
@@ -99,7 +71,7 @@ See https://github.com/adobe-type-tools/cmap-resources
       <div id="mainContainer">
         <div class="findbar hidden doorHanger" id="findbar">
           <div id="findbarInputContainer">
-            <input id="findInput" class="toolbarField" title="Find" placeholder="Find in document…" tabindex="91" data-l10n-id="find_input">
+            <input id="findInput" class="toolbarField" title="Find" placeholder="Find in document" tabindex="91" data-l10n-id="find_input">
             <div class="splitToolbarButton">
               <button id="findPrevious" class="toolbarButton findPrevious" title="Find the previous occurrence of the phrase" tabindex="92" data-l10n-id="find_previous">
                 <span data-l10n-id="find_previous_label">Previous</span>
@@ -203,8 +175,8 @@ See https://github.com/adobe-type-tools/cmap-resources
 
             <div class="horizontalToolbarSeparator spreadModeButtons"></div>
 
-            <button id="documentProperties" class="secondaryToolbarButton documentProperties" title="Document Properties…" tabindex="68" data-l10n-id="document_properties">
-              <span data-l10n-id="document_properties_label">Document Properties…</span>
+            <button id="documentProperties" class="secondaryToolbarButton documentProperties" title="Document Properties" tabindex="68" data-l10n-id="document_properties">
+              <span data-l10n-id="document_properties_label">Document Properties</span>
             </button>
           </div>
         </div>  <!-- secondaryToolbar -->
@@ -401,11 +373,10 @@ See https://github.com/adobe-type-tools/cmap-resources
             </div>
           </div>
         </div>
-<!--#if !MOZCENTRAL-->
         <div id="printServiceOverlay" class="container hidden">
           <div class="dialog">
             <div class="row">
-              <span data-l10n-id="print_progress_message">Preparing document for printing…</span>
+              <span data-l10n-id="print_progress_message">Preparing document for printing</span>
             </div>
             <div class="row">
               <progress value="0" max="100"></progress>
@@ -416,13 +387,10 @@ See https://github.com/adobe-type-tools/cmap-resources
             </div>
           </div>
         </div>
-<!--#endif-->
-<!--#if CHROME-->
-<!--#include viewer-snippet-chrome-overlays.html-->
-<!--#endif-->
       </div>  <!-- overlayContainer -->
 
     </div> <!-- outerContainer -->
     <div id="printContainer"></div>
   </body>
 </html>
+

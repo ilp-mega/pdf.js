@@ -50,8 +50,8 @@ import {
 } from "./core_utils.js";
 import { NullStream, Stream, StreamsSequenceStream } from "./stream.js";
 import { AnnotationFactory } from "./annotation.js";
-import { calculateMD5 } from "./crypto.js";
 import { Linearization } from "./parser.js";
+import { MurmurHash3_64 } from "./murmurhash3.js";
 import { OperatorList } from "./operator_list.js";
 import { PartialEvaluator } from "./evaluator.js";
 
@@ -756,7 +756,7 @@ class PDFDocument {
   }
 
   get fingerprint() {
-    let hash;
+    const hash = new MurmurHash3_64(0x4d454741);
     const idArray = this.xref.trailer.get("ID");
     if (
       Array.isArray(idArray) &&
@@ -764,21 +764,12 @@ class PDFDocument {
       isString(idArray[0]) &&
       idArray[0] !== EMPTY_FINGERPRINT
     ) {
-      hash = stringToBytes(idArray[0]);
+      hash.update(stringToBytes(idArray[0]));
     } else {
-      hash = calculateMD5(
-        this.stream.getByteRange(0, FINGERPRINT_FIRST_BYTES),
-        0,
-        FINGERPRINT_FIRST_BYTES
-      );
+      hash.update(this.stream.getByteRange(0, FINGERPRINT_FIRST_BYTES));
     }
 
-    const fingerprintBuf = [];
-    for (let i = 0, ii = hash.length; i < ii; i++) {
-      const hex = hash[i].toString(16);
-      fingerprintBuf.push(hex.padStart(2, "0"));
-    }
-    return shadow(this, "fingerprint", fingerprintBuf.join(""));
+    return shadow(this, "fingerprint", hash.hexdigest());
   }
 
   _getLinearizationPage(pageIndex) {

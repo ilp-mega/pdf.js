@@ -94,7 +94,7 @@ const DefaultPartialEvaluatorOptions = Object.freeze({
   maxImageSize: -1,
   disableFontFace: false,
   ignoreErrors: false,
-  isEvalSupported: true,
+  isEvalSupported: false,
   fontExtraProperties: false,
 });
 
