@@ -878,6 +878,21 @@ const createObjectURL = (function createObjectURLClosure() {
   };
 })();
 
+if (Promise.allSettled === undefined) {
+  Promise.allSettled = function (promises) {
+    const done = function (result) {
+      return { status: "fulfilled", value: result };
+    };
+    const fail = function (result) {
+      return { status: "rejected", reason: result };
+    };
+    const map = function (value) {
+      return Promise.resolve(value).then(done).catch(fail);
+    };
+    return Promise.all(promises.map(map));
+  };
+}
+
 export {
   BaseException,
   FONT_IDENTITY_MATRIX,
