@@ -1621,18 +1621,11 @@ const PDFViewerApplication = {
 
 function webViewerInitialized() {
   const appConfig = PDFViewerApplication.appConfig;
-  let file;
-  if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
-    file = JSON.parse(localStorage.getItem("currPdfPrev2"));
-    localStorage.removeItem("currPdfPrev2");
-  } else if (PDFJSDev.test("MOZCENTRAL")) {
-    file = window.location.href;
-  } else if (PDFJSDev.test("CHROME")) {
-    file = AppOptions.get("defaultUrl");
-  }
 
   appConfig.toolbar.openFile.setAttribute("hidden", "true");
   appConfig.toolbar.download.setAttribute("hidden", "true");
+  appConfig.toolbar.viewBookmark.setAttribute("hidden", "true");
+  appConfig.secondaryToolbar.viewBookmarkButton.setAttribute("hidden", "true");
   appConfig.secondaryToolbar.openFileButton.setAttribute("hidden", "true");
   appConfig.secondaryToolbar.downloadButton.setAttribute("hidden", "true");
 
@@ -1684,12 +1677,25 @@ function webViewerInitialized() {
       const data = ev.data;
       const tick = ++openTick;
       const promise = PDFViewerApplication.close() || Promise.resolve();
-      promise.then(() => {
-        if (openTick === tick) {
-          PDFViewerApplication.open(data);
+      promise
+        .then(() => {
+          if (openTick !== tick) {
+            return false;
+          }
           console.warn("ack, pdfjs-openfile", data);
-        }
-      });
+          return PDFViewerApplication.open(data);
+        })
+        .catch(reason => {
+          PDFViewerApplication.l10n
+            .get(
+              "loading_error",
+              null,
+              "An error occurred while loading the PDF."
+            )
+            .then(msg => {
+              PDFViewerApplication.error(msg, reason);
+            });
+        });
       ev.data = null;
     },
     true
@@ -1729,15 +1735,9 @@ function webViewerInitialized() {
       }
     });
 
-  try {
-    PDFViewerApplication.open(file);
-  } catch (reason) {
-    PDFViewerApplication.l10n
-      .get("loading_error", null, "An error occurred while loading the PDF.")
-      .then(msg => {
-        PDFViewerApplication.error(msg, reason);
-      });
-  }
+  const ev = document.createEvent("HTMLEvents");
+  ev.initEvent("pdfjs-webViewerInitialized.meganz", true);
+  appConfig.appContainer.dispatchEvent(ev);
 }
 
 function webViewerResetPermissions() {
