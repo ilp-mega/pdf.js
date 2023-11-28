@@ -22,6 +22,8 @@ const OptionKind = {
   PREFERENCE: 0x80,
 };
 
+const global = typeof window !== "undefined" ? window.parent : false;
+
 /**
  * PLEASE NOTE: To avoid introducing unnecessary dependencies, we specify the
  *              values below *explicitly* rather than relying on imported types.
@@ -74,7 +76,7 @@ const defaultOptions = {
   },
   externalLinkTarget: {
     /** @type {number} */
-    value: 0,
+    value: 2,
     kind: OptionKind.VIEWER + OptionKind.PREFERENCE,
   },
   historyUpdateUrl: {
@@ -89,7 +91,7 @@ const defaultOptions = {
   },
   imageResourcesPath: {
     /** @type {string} */
-    value: "./images/",
+    value: global.staticpath + "images/pdfV/",
     kind: OptionKind.VIEWER,
   },
   maxCanvasPixels: {
@@ -164,7 +166,7 @@ const defaultOptions = {
     value:
       typeof PDFJSDev === "undefined" || !PDFJSDev.test("PRODUCTION")
         ? "../external/bcmaps/"
-        : "../web/cmaps/",
+        : global.staticpath + "cmaps/",
     kind: OptionKind.API,
   },
   disableAutoFetch: {
@@ -204,7 +206,7 @@ const defaultOptions = {
   },
   isEvalSupported: {
     /** @type {boolean} */
-    value: true,
+    value: false,
     kind: OptionKind.API,
   },
   maxImageSize: {
@@ -219,7 +221,7 @@ const defaultOptions = {
   },
   verbosity: {
     /** @type {number} */
-    value: 1,
+    value: global.d > 1 ? 10 : global.d | 0,
     kind: OptionKind.API,
   },
 
@@ -233,7 +235,7 @@ const defaultOptions = {
     value:
       typeof PDFJSDev === "undefined" || !PDFJSDev.test("PRODUCTION")
         ? "../src/worker_loader.js"
-        : "../build/pdf.worker.js",
+        : (global.is_extension ? "" : "/") + "pdf.worker.js",
     kind: OptionKind.WORKER,
   },
 };

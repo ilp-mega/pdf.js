@@ -602,10 +602,13 @@ class BaseViewer {
                 }
               },
               reason => {
-                console.error(
-                  `Unable to get page ${pageNum} to initialize viewer`,
-                  reason
-                );
+                // @todo proper cleanup..
+                if (!String(reason).includes("Transport destroyed")) {
+                  console.error(
+                    `Unable to get page ${pageNum} to initialize viewer`,
+                    reason
+                  );
+                }
                 if (--getPagesLeft === 0) {
                   this._pagesCapability.resolve();
                 }

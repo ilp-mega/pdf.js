@@ -36,12 +36,12 @@ import {
   unreachable,
   warn,
 } from "../shared/util.js";
+import { AppOptions, OptionKind } from "../../web/app_options.js";
 import {
   deprecated,
   DOMCanvasFactory,
   DOMCMapReaderFactory,
   isDataScheme,
-  loadScript,
   PageViewport,
   RenderingCancelledException,
   StatTimer,
@@ -290,6 +290,7 @@ function getDocument(src) {
   params.ignoreErrors = params.stopAtErrors !== true;
   params.fontExtraProperties = params.fontExtraProperties === true;
   params.pdfBug = params.pdfBug === true;
+  params.isEvalSupported = false;
   params.enableXfa = params.enableXfa === true;
 
   if (
@@ -303,9 +304,6 @@ function getDocument(src) {
   }
   if (!Number.isInteger(params.maxImageSize)) {
     params.maxImageSize = -1;
-  }
-  if (typeof params.isEvalSupported !== "boolean") {
-    params.isEvalSupported = true;
   }
   if (typeof params.disableFontFace !== "boolean") {
     params.disableFontFace = apiCompatibilityParams.disableFontFace || false;
@@ -791,15 +789,6 @@ class PDFDocumentProxy {
    */
   getAttachments() {
     return this._transport.getAttachments();
-  }
-
-  /**
-   * @returns {Promise<Array<string> | null>} A promise that is resolved with
-   *   an {Array} of all the JavaScript strings in the name tree, or `null`
-   *   if no JavaScript exists.
-   */
-  getJavaScript() {
-    return this._transport.getJavaScript();
   }
 
   /**
@@ -1756,107 +1745,6 @@ class PDFPageProxy {
   }
 }
 
-class LoopbackPort {
-  constructor() {
-    this._listeners = [];
-    this._deferred = Promise.resolve(undefined);
-  }
-
-  postMessage(obj, transfers) {
-    function cloneValue(value) {
-      // Trying to perform a structured clone close to the spec, including
-      // transfers.
-      if (typeof value !== "object" || value === null) {
-        return value;
-      }
-      if (cloned.has(value)) {
-        // already cloned the object
-        return cloned.get(value);
-      }
-      let buffer, result;
-      if ((buffer = value.buffer) && isArrayBuffer(buffer)) {
-        // We found object with ArrayBuffer (typed array).
-        if (transfers?.includes(buffer)) {
-          result = new value.constructor(
-            buffer,
-            value.byteOffset,
-            value.byteLength
-          );
-        } else {
-          result = new value.constructor(value);
-        }
-        cloned.set(value, result);
-        return result;
-      }
-      if (value instanceof Map) {
-        result = new Map();
-        cloned.set(value, result); // Adding to cache now for cyclic references.
-        for (const [key, val] of value) {
-          result.set(key, cloneValue(val));
-        }
-        return result;
-      }
-      if (value instanceof Set) {
-        result = new Set();
-        cloned.set(value, result); // Adding to cache now for cyclic references.
-        for (const val of value) {
-          result.add(cloneValue(val));
-        }
-        return result;
-      }
-      if (value instanceof URL) {
-        throw new Error(`LoopbackPort.postMessage - cannot clone: ${value}`);
-      }
-      result = Array.isArray(value) ? [] : Object.create(null);
-      cloned.set(value, result); // Adding to cache now for cyclic references.
-      // Cloning all value and object properties, however ignoring properties
-      // defined via getter.
-      for (const i in value) {
-        let desc,
-          p = value;
-        while (!(desc = Object.getOwnPropertyDescriptor(p, i))) {
-          p = Object.getPrototypeOf(p);
-        }
-        if (typeof desc.value === "undefined") {
-          continue;
-        }
-        if (typeof desc.value === "function") {
-          if (value.hasOwnProperty?.(i)) {
-            throw new Error(
-              `LoopbackPort.postMessage - cannot clone: ${value[i]}`
-            );
-          }
-          continue;
-        }
-        result[i] = cloneValue(desc.value);
-      }
-      return result;
-    }
-
-    const cloned = new WeakMap();
-    const event = { data: cloneValue(obj) };
-
-    this._deferred.then(() => {
-      for (const listener of this._listeners) {
-        listener.call(this, event);
-      }
-    });
-  }
-
-  addEventListener(name, listener) {
-    this._listeners.push(listener);
-  }
-
-  removeEventListener(name, listener) {
-    const i = this._listeners.indexOf(listener);
-    this._listeners.splice(i, 1);
-  }
-
-  terminate() {
-    this._listeners.length = 0;
-  }
-}
-
 /**
  * @typedef {Object} PDFWorkerParameters
  * @property {string} [name] - The name of the worker.
@@ -1868,102 +1756,13 @@ class LoopbackPort {
 /** @type {any} */
 const PDFWorker = (function PDFWorkerClosure() {
   const pdfWorkerPorts = new WeakMap();
-  let isWorkerDisabled = false;
-  let fallbackWorkerSrc;
-  let nextFakeWorkerId = 0;
-  let fakeWorkerCapability;
-
-  if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("GENERIC")) {
-    // eslint-disable-next-line no-undef
-    if (isNodeJS && typeof __non_webpack_require__ === "function") {
-      // Workers aren't supported in Node.js, force-disabling them there.
-      isWorkerDisabled = true;
-
-      if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("LIB")) {
-        fallbackWorkerSrc = "../pdf.worker.js";
-      } else {
-        fallbackWorkerSrc = "./pdf.worker.js";
-      }
-    } else if (typeof document === "object" && "currentScript" in document) {
-      const pdfjsFilePath = document.currentScript?.src;
-      if (pdfjsFilePath) {
-        fallbackWorkerSrc = pdfjsFilePath.replace(
-          /(\.(?:min\.)?js)(\?.*)?$/i,
-          ".worker$1$2"
-        );
-      }
-    }
-  }
 
   function getWorkerSrc() {
     if (GlobalWorkerOptions.workerSrc) {
       return GlobalWorkerOptions.workerSrc;
     }
-    if (typeof fallbackWorkerSrc !== "undefined") {
-      if (!isNodeJS) {
-        deprecated('No "GlobalWorkerOptions.workerSrc" specified.');
-      }
-      return fallbackWorkerSrc;
-    }
+
     throw new Error('No "GlobalWorkerOptions.workerSrc" specified.');
-  }
-
-  function getMainThreadWorkerMessageHandler() {
-    let mainWorkerMessageHandler;
-    try {
-      mainWorkerMessageHandler = globalThis.pdfjsWorker?.WorkerMessageHandler;
-    } catch (ex) {
-      /* Ignore errors. */
-    }
-    return mainWorkerMessageHandler || null;
-  }
-
-  // Loads worker code into main thread.
-  function setupFakeWorkerGlobal() {
-    if (fakeWorkerCapability) {
-      return fakeWorkerCapability.promise;
-    }
-    fakeWorkerCapability = createPromiseCapability();
-
-    const loader = async function () {
-      const mainWorkerMessageHandler = getMainThreadWorkerMessageHandler();
-
-      if (mainWorkerMessageHandler) {
-        // The worker was already loaded using e.g. a `<script>` tag.
-        return mainWorkerMessageHandler;
-      }
-      if (typeof PDFJSDev === "undefined" || !PDFJSDev.test("PRODUCTION")) {
-        const worker = await import("pdfjs/core/worker.js");
-        return worker.WorkerMessageHandler;
-      }
-      if (
-        PDFJSDev.test("GENERIC") &&
-        isNodeJS &&
-        // eslint-disable-next-line no-undef
-        typeof __non_webpack_require__ === "function"
-      ) {
-        // Since bundlers, such as Webpack, cannot be told to leave `require`
-        // statements alone we are thus forced to jump through hoops in order
-        // to prevent `Critical dependency: ...` warnings in third-party
-        // deployments of the built `pdf.js`/`pdf.worker.js` files; see
-        // https://github.com/webpack/webpack/issues/8826
-        //
-        // The following hack is based on the assumption that code running in
-        // Node.js won't ever be affected by e.g. Content Security Policies that
-        // prevent the use of `eval`. If that ever occurs, we should revert this
-        // to a normal `__non_webpack_require__` statement and simply document
-        // the Webpack warnings instead (telling users to ignore them).
-        //
-        // eslint-disable-next-line no-eval
-        const worker = eval("require")(getWorkerSrc());
-        return worker.WorkerMessageHandler;
-      }
-      await loadScript(getWorkerSrc());
-      return window.pdfjsWorker.WorkerMessageHandler;
-    };
-    loader().then(fakeWorkerCapability.resolve, fakeWorkerCapability.reject);
-
-    return fakeWorkerCapability.promise;
   }
 
   function createCDNWrapper(url) {
@@ -2040,11 +1839,7 @@ const PDFWorker = (function PDFWorkerClosure() {
       // all requirements to run parts of pdf.js in a web worker.
       // Right now, the requirement is, that an Uint8Array is still an
       // Uint8Array as it arrives on the worker. (Chrome added this with v.15.)
-      if (
-        typeof Worker !== "undefined" &&
-        !isWorkerDisabled &&
-        !getMainThreadWorkerMessageHandler()
-      ) {
+      if (typeof Worker !== "undefined") {
         let workerSrc = getWorkerSrc();
 
         try {
@@ -2157,41 +1952,9 @@ const PDFWorker = (function PDFWorkerClosure() {
     }
 
     _setupFakeWorker() {
-      if (!isWorkerDisabled) {
-        warn("Setting up fake worker.");
-        isWorkerDisabled = true;
-      }
-
-      setupFakeWorkerGlobal()
-        .then(WorkerMessageHandler => {
-          if (this.destroyed) {
-            this._readyCapability.reject(new Error("Worker was destroyed"));
-            return;
-          }
-          const port = new LoopbackPort();
-          this._port = port;
-
-          // All fake workers use the same port, making id unique.
-          const id = "fake" + nextFakeWorkerId++;
-
-          // If the main thread is our worker, setup the handling for the
-          // messages -- the main thread sends to it self.
-          const workerHandler = new MessageHandler(id + "_worker", id, port);
-          WorkerMessageHandler.setup(workerHandler, port);
-
-          const messageHandler = new MessageHandler(id, id + "_worker", port);
-          this._messageHandler = messageHandler;
-          this._readyCapability.resolve();
-          // Send global setting, e.g. verbosity level.
-          messageHandler.send("configure", {
-            verbosity: this.verbosity,
-          });
-        })
-        .catch(reason => {
-          this._readyCapability.reject(
-            new Error(`Setting up fake worker failed: "${reason.message}".`)
-          );
-        });
+      setTimeout(() =>
+        this._readyCapability.reject(new Error("Setting up worker failed."))
+      );
     }
 
     /**
@@ -2802,10 +2565,6 @@ class WorkerTransport {
     return this.messageHandler.sendWithPromise("GetAttachments", null);
   }
 
-  getJavaScript() {
-    return this.messageHandler.sendWithPromise("GetJavaScript", null);
-  }
-
   getDocJSActions() {
     return this.messageHandler.sendWithPromise("GetDocJSActions", null);
   }
@@ -2879,7 +2638,7 @@ class WorkerTransport {
       const cleanupSuccessful = page.cleanup();
 
       if (!cleanupSuccessful) {
-        throw new Error(`startCleanup: Page ${i + 1} is currently rendering.`);
+        return;
       }
     }
     this.commonObjs.clear();
@@ -3185,6 +2944,60 @@ const InternalRenderTask = (function InternalRenderTaskClosure() {
   return InternalRenderTask;
 })();
 
+async function getPreviewImage(data, pageNum = 1, scale = 2.5) {
+  if (!GlobalWorkerOptions.workerSrc) {
+    Object.assign(GlobalWorkerOptions, AppOptions.getAll(OptionKind.WORKER));
+  }
+  if (typeof data === "string") {
+    data = { url: data };
+  } else if (isArrayBuffer(data)) {
+    data = { data };
+  }
+  data = Object.assign({}, AppOptions.getAll(OptionKind.API), data);
+  const pdfTask = getDocument(data);
+  const pdfDocument = await pdfTask.promise;
+  const pdfPage = await pdfDocument.getPage(pageNum);
+  const viewport = pdfPage.getViewport({ scale });
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  canvas.height = viewport.height;
+  canvas.width = viewport.width;
+  canvas.mozOpaque = true;
+  ctx.save();
+  ctx.fillStyle = "rgb(255, 255, 255)";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  await pdfPage.render({ viewport, canvasContext: ctx, enableWebGL: true })
+    .promise;
+  await pdfTask.destroy();
+
+  const u8 = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  let len = u8.byteLength;
+  while (len--) {
+    if (u8[len] !== 0xff) {
+      break;
+    }
+  }
+  if (len < 0) {
+    warn(
+      "getPreviewImage: PDF page " + pageNum + " is blank, trying next page..."
+    );
+    return getPreviewImage(data, ++pageNum, scale);
+  }
+
+  const buffer = dataURLToAB(canvas.toDataURL("image/png")); // eslint-disable-line no-undef
+  buffer.width = canvas.width;
+  buffer.height = canvas.height;
+  if (data.verbosity) {
+    buffer.data = data;
+  }
+  canvas.width = 0;
+  canvas.height = 0;
+
+  return buffer;
+}
+
 /** @type {string} */
 const version =
   typeof PDFJSDev !== "undefined" ? PDFJSDev.eval("BUNDLE_VERSION") : null;
@@ -3197,7 +3010,7 @@ export {
   DefaultCanvasFactory,
   DefaultCMapReaderFactory,
   getDocument,
-  LoopbackPort,
+  getPreviewImage,
   PDFDataRangeTransport,
   PDFDocumentProxy,
   PDFPageProxy,

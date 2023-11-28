@@ -23,8 +23,8 @@ const pdfjsVersion =
 const pdfjsBuild =
   typeof PDFJSDev !== "undefined" ? PDFJSDev.eval("BUNDLE_BUILD") : void 0;
 
-window.PDFViewerApplication = PDFViewerApplication;
-window.PDFViewerApplicationOptions = AppOptions;
+// window.PDFViewerApplication = PDFViewerApplication;
+// window.PDFViewerApplicationOptions = AppOptions;
 
 if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("CHROME")) {
   var defaultUrl; // eslint-disable-line no-var

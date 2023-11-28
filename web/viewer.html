@@ -40,9 +40,6 @@ See https://github.com/adobe-type-tools/cmap-resources
 <!--#endif-->
 
     <link rel="stylesheet" href="viewer.css">
-<!--#if !PRODUCTION-->
-    <link rel="resource" type="application/l10n" href="locale/locale.properties">
-<!--#endif-->
 
 <!--#if !PRODUCTION-->
     <script defer src="../node_modules/es-module-shims/dist/es-module-shims.js"></script>
@@ -253,6 +250,10 @@ See https://github.com/adobe-type-tools/cmap-resources
                 <span id="numPages" class="toolbarLabel"></span>
               </div>
               <div id="toolbarViewerRight">
+                <button id="meganz" class="toolbarButton meganz hiddenLargeView">
+                  <span></span>
+                </button>
+
                 <button id="presentationMode" class="toolbarButton presentationMode hiddenLargeView" title="Switch to Presentation Mode" tabindex="31" data-l10n-id="presentation_mode">
                   <span data-l10n-id="presentation_mode_label">Presentation Mode</span>
                 </button>

@@ -358,14 +358,14 @@ function getVerbosityLevel() {
 // end users.
 function info(msg) {
   if (verbosity >= VerbosityLevel.INFOS) {
-    console.log(`Info: ${msg}`);
+    console.info.apply(console, arguments);
   }
 }
 
 // Non-fatal warnings.
 function warn(msg) {
   if (verbosity >= VerbosityLevel.WARNINGS) {
-    console.log(`Warning: ${msg}`);
+    console.warn.apply(console, arguments);
   }
 }
 
@@ -624,12 +624,7 @@ const IsLittleEndianCached = {
 
 // Checks if it's possible to eval JS expressions.
 function isEvalSupported() {
-  try {
-    new Function(""); // eslint-disable-line no-new, no-new-func
-    return true;
-  } catch (e) {
-    return false;
-  }
+  return false;
 }
 const IsEvalSupportedCached = {
   get value() {
@@ -971,6 +966,21 @@ function createObjectURL(data, contentType = "", forceDataSchema = false) {
     buffer += digits[d1] + digits[d2] + digits[d3] + digits[d4];
   }
   return buffer;
+}
+
+if (Promise.allSettled === undefined) {
+  Promise.allSettled = function (promises) {
+    const done = function (result) {
+      return { status: "fulfilled", value: result };
+    };
+    const fail = function (result) {
+      return { status: "rejected", reason: result };
+    };
+    const map = function (value) {
+      return Promise.resolve(value).then(done).catch(fail);
+    };
+    return Promise.all(promises.map(map));
+  };
 }
 
 export {

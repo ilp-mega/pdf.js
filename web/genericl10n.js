@@ -13,40 +13,40 @@
  * limitations under the License.
  */
 
-import "../external/webL10n/l10n.js";
-import { getL10nFallback } from "./l10n_utils.js";
-
-const webL10n = document.webL10n;
-
 class GenericL10n {
   constructor(lang) {
     this._lang = lang;
-    this._ready = new Promise((resolve, reject) => {
-      webL10n.setLanguage(lang, () => {
-        resolve(webL10n);
-      });
-    });
+    this._ready = Promise.resolve();
   }
 
   async getLanguage() {
-    const l10n = await this._ready;
-    return l10n.getLanguage();
+    return this._lang;
   }
 
   async getDirection() {
-    const l10n = await this._ready;
-    return l10n.getDirection();
+    // http://www.w3.org/International/questions/qa-scripts
+    // Arabic, Hebrew, Farsi, Pashto, Urdu
+    const rtlList = ["ar", "he", "fa", "ps", "ur"];
+    const shortCode = this._lang.split("-", 1)[0];
+    return rtlList.includes(shortCode) ? "rtl" : "ltr";
   }
 
-  async get(key, args = null, fallback = getL10nFallback(key, args)) {
-    const l10n = await this._ready;
-    return l10n.get(key, args, fallback);
+  async get(key, args, str) {
+    if (args && str && str.includes("{")) {
+      const reArgs = /\{\{\s*(.+?)\s*\}\}/g;
+      str = str.replace(reArgs, function (matched_text, arg) {
+        if (arg in args) {
+          return args[arg];
+        }
+        console.warn("argument {{" + arg + "}} for #" + key + " is undefined.");
+        return matched_text;
+      });
+    }
+
+    return str || "";
   }
 
-  async translate(element) {
-    const l10n = await this._ready;
-    return l10n.translate(element);
-  }
+  async translate() {}
 }
 
 export { GenericL10n };

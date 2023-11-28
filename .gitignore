@@ -1,6 +1,9 @@
 *~
 local.mk
-build/
+build/tmp/
+build/default_preferences/
+build/generic/web/images/
+build/generic/web/cmaps/
 tags
 .DS_Store
 Makefile

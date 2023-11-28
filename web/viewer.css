@@ -16,7 +16,7 @@
 @import url(pdf_viewer.css);
 
 :root {
-  --sidebar-width: 200px;
+  --sidebar-width: 210px;
   --sidebar-transition-duration: 200ms;
   --sidebar-transition-timing-function: ease;
   --loadingBar-end-offset: 0;
@@ -1073,6 +1073,11 @@ html[dir="rtl"] .toolbarButton#secondaryToolbarToggle::before {
 .bookmark[href="#"] {
   opacity: 0.5;
   pointer-events: none;
+}
+
+.toolbarButton.meganz::before,
+.secondaryToolbarButton.meganz::before {
+  content: url(images/toolbarButton-meganz@2x.png);
 }
 
 .toolbarButton.bookmark::before,

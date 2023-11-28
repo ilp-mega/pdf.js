@@ -64,7 +64,7 @@ const DIST_DIR = BUILD_DIR + "dist/";
 const TYPES_DIR = BUILD_DIR + "types/";
 const TMP_DIR = BUILD_DIR + "tmp/";
 const TYPESTEST_DIR = BUILD_DIR + "typestest/";
-const COMMON_WEB_FILES = ["web/images/*.{png,svg,gif,cur}", "web/debugger.js"];
+const COMMON_WEB_FILES = ["web/images/*.{png,svg,gif,cur}"];
 const MOZCENTRAL_DIFF_FILE = "mozcentral.diff";
 
 const REPO = "git@github.com:mozilla/pdf.js.git";
@@ -188,12 +188,7 @@ function createWebpackConfig(
   const licenseHeaderLibre = fs
     .readFileSync("./src/license_header_libre.js")
     .toString();
-  const enableSourceMaps =
-    !bundleDefines.MOZCENTRAL &&
-    !bundleDefines.CHROME &&
-    !bundleDefines.LIB &&
-    !bundleDefines.TESTING &&
-    !disableSourceMaps;
+  const enableSourceMaps = false;
   const skipBabel = bundleDefines.SKIP_BABEL;
 
   // `core-js` (see https://github.com/zloirock/core-js/issues/514),
@@ -338,6 +333,13 @@ function replaceJSRootName(amdName, jsName) {
   );
 }
 
+function addVersionToWorkerSrc() {
+  return replace(
+    "pdf.worker.js",
+    "pdf.worker.js?v=" + getVersionJSON().version
+  );
+}
+
 function createMainBundle(defines) {
   const mainAMDName = "pdfjs-dist/build/pdf";
   const mainOutputName = "pdf.js";
@@ -352,6 +354,7 @@ function createMainBundle(defines) {
     .src("./src/pdf.js")
     .pipe(webpack2Stream(mainFileConfig))
     .pipe(replaceWebpackRequire())
+    .pipe(addVersionToWorkerSrc())
     .pipe(replaceJSRootName(mainAMDName, "pdfjsLib"));
 }
 
@@ -463,7 +466,10 @@ function createWebBundle(defines, options) {
       defaultPreferencesDir: options.defaultPreferencesDir,
     }
   );
-  return gulp.src("./web/viewer.js").pipe(webpack2Stream(viewerFileConfig));
+  return gulp
+    .src("./web/viewer.js")
+    .pipe(webpack2Stream(viewerFileConfig))
+    .pipe(addVersionToWorkerSrc());
 }
 
 function createComponentsBundle(defines) {
@@ -625,10 +631,10 @@ gulp.task("buildnumber", function (done) {
 
       const version = config.versionPrefix + buildNumber;
 
-      exec('git log --format="%h" -n 1', function (err2, stdout2, stderr2) {
+      exec("git rev-parse upstream/master", function (err2, stdout2, stderr2) {
         let buildCommit = "";
         if (!err2) {
-          buildCommit = stdout2.replace("\n", "");
+          buildCommit = stdout2.split(/\s/).filter(String).join('').substr(0, 8) + '.meganz';
         }
 
         createStringSource(
@@ -762,6 +768,18 @@ gulp.task("cmaps", function (done) {
   done();
 });
 
+function validateASCII(source, data, html) {
+  if (data.charCodeAt(0) === 0xfeff) {
+    data = data.substr(1);
+  }
+  data = data.replace(/\u2026/g, "");
+
+  if (/[^\x00-\x7f]/.test(data)) {
+    throw new Error(source + " does contain non-ASCII characters.");
+  }
+  return data;
+}
+
 function preprocessCSS(source, mode, defines, cleanup) {
   const outName = getTempFile("~preprocess", ".css");
   builder.preprocessCSS(mode, source, outName);
@@ -774,7 +792,7 @@ function preprocessCSS(source, mode, defines, cleanup) {
   }
 
   const i = source.lastIndexOf("/");
-  return createStringSource(source.substr(i + 1), out);
+  return createStringSource(source.substr(i + 1), validateASCII(source, out));
 }
 
 function preprocessHTML(source, defines) {
@@ -784,7 +802,10 @@ function preprocessHTML(source, defines) {
   fs.unlinkSync(outName);
 
   const i = source.lastIndexOf("/");
-  return createStringSource(source.substr(i + 1), `${out.trimEnd()}\n`);
+  return createStringSource(
+    source.substr(i + 1),
+    validateASCII(source, `${out.trimEnd()}\n`, true)
+  );
 }
 
 function buildGeneric(defines, dir) {
@@ -802,11 +823,6 @@ function buildGeneric(defines, dir) {
     gulp.src(COMMON_WEB_FILES, { base: "web/" }).pipe(gulp.dest(dir + "web")),
     gulp.src("LICENSE").pipe(gulp.dest(dir)),
     gulp
-      .src(["web/locale/*/viewer.properties", "web/locale/locale.properties"], {
-        base: "web/",
-      })
-      .pipe(gulp.dest(dir + "web")),
-    gulp
       .src(["external/bcmaps/*.bcmap", "external/bcmaps/LICENSE"], {
         base: "external/bcmaps",
       })
@@ -814,10 +830,6 @@ function buildGeneric(defines, dir) {
     preprocessHTML("web/viewer.html", defines).pipe(gulp.dest(dir + "web")),
     preprocessCSS("web/viewer.css", "generic", defines, true)
       .pipe(postcss([calc(), autoprefixer(AUTOPREFIXER_CONFIG)]))
-      .pipe(gulp.dest(dir + "web")),
-
-    gulp
-      .src("web/compressed.tracemonkey-pldi-09.pdf")
       .pipe(gulp.dest(dir + "web")),
   ]);
 }
@@ -828,7 +840,7 @@ gulp.task(
   "generic",
   gulp.series(
     "buildnumber",
-    "locale",
+    // "locale",
     function scripting() {
       const defines = builder.merge(DEFINES, { GENERIC: true });
       return merge([

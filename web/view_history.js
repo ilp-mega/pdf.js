@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-const DEFAULT_VIEW_HISTORY_CACHE_SIZE = 20;
+const DEFAULT_VIEW_HISTORY_CACHE_SIZE = 200;
+const global = typeof window !== "undefined" ? window.parent : false;
 
 /**
  * View History - This is a utility for saving various view parameters for
@@ -30,7 +31,10 @@ class ViewHistory {
     this.cacheSize = cacheSize;
 
     this._initializedPromise = this._readFromStorage().then(databaseStr => {
-      const database = JSON.parse(databaseStr || "{}");
+      const database =
+        typeof databaseStr === "string"
+          ? JSON.parse(databaseStr || "{}")
+          : databaseStr || {};
       let index = -1;
       if (!Array.isArray(database.files)) {
         database.files = [];
@@ -56,16 +60,37 @@ class ViewHistory {
   }
 
   async _writeToStorage() {
+    if (
+      typeof global.M === "object" &&
+      typeof global.M.setPersistentData === "function"
+    ) {
+      return global.M.setPersistentData("pdfjs.history", this.database);
+    }
     const databaseStr = JSON.stringify(this.database);
 
     if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
       sessionStorage.setItem("pdfjs.history", databaseStr);
-      return;
+      return null;
     }
     localStorage.setItem("pdfjs.history", databaseStr);
+
+    return null;
   }
 
   async _readFromStorage() {
+    if (
+      typeof global.M === "object" &&
+      typeof global.M.setPersistentData === "function"
+    ) {
+      const value = localStorage.getItem("pdfjs.history");
+      if (value) {
+        localStorage.removeItem("pdfjs.history");
+        return global.M.setPersistentData("pdfjs.history", JSON.parse(value))
+          .then(() => value)
+          .catch(() => value);
+      }
+      return global.M.getPersistentData("pdfjs.history").catch(() => false);
+    }
     if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
       return sessionStorage.getItem("pdfjs.history");
     }

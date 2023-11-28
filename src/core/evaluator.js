@@ -92,7 +92,7 @@ const DefaultPartialEvaluatorOptions = Object.freeze({
   maxImageSize: -1,
   disableFontFace: false,
   ignoreErrors: false,
-  isEvalSupported: true,
+  isEvalSupported: false,
   fontExtraProperties: false,
 });
 
@@ -224,7 +224,7 @@ class PartialEvaluator {
   get _pdfFunctionFactory() {
     const pdfFunctionFactory = new PDFFunctionFactory({
       xref: this.xref,
-      isEvalSupported: this.options.isEvalSupported,
+      isEvalSupported: false,
     });
     return shadow(this, "_pdfFunctionFactory", pdfFunctionFactory);
   }
