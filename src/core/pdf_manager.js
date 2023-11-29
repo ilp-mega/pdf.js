@@ -114,7 +114,7 @@ class LocalPdfManager extends BasePdfManager {
     this._password = password;
     this._docBaseUrl = parseDocBaseUrl(docBaseUrl);
     this.evaluatorOptions = evaluatorOptions;
-    this.enableXfa = enableXfa;
+    this.enableXfa = false;
 
     const stream = new Stream(data);
     this.pdfDocument = new PDFDocument(this, stream);
@@ -158,7 +158,7 @@ class NetworkPdfManager extends BasePdfManager {
     this._docBaseUrl = parseDocBaseUrl(docBaseUrl);
     this.msgHandler = args.msgHandler;
     this.evaluatorOptions = evaluatorOptions;
-    this.enableXfa = enableXfa;
+    this.enableXfa = false;
 
     this.streamManager = new ChunkedStreamManager(pdfNetworkStream, {
       msgHandler: args.msgHandler,

@@ -291,7 +291,7 @@ function getDocument(src) {
   params.fontExtraProperties = params.fontExtraProperties === true;
   params.pdfBug = params.pdfBug === true;
   params.isEvalSupported = false;
-  params.enableXfa = params.enableXfa === true;
+  params.enableXfa = false;
 
   if (
     typeof params.docBaseUrl !== "string" ||

@@ -169,7 +169,6 @@ function createWebpackConfig(
   output,
   {
     disableVersionInfo = false,
-    disableSourceMaps = false,
     disableLicenseHeader = false,
     defaultPreferencesDir = null,
   } = {}

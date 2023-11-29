@@ -409,7 +409,7 @@ class WorkerMessageHandler {
         maxImageSize: data.maxImageSize,
         disableFontFace: data.disableFontFace,
         ignoreErrors: data.ignoreErrors,
-        isEvalSupported: data.isEvalSupported,
+        isEvalSupported: false,
         fontExtraProperties: data.fontExtraProperties,
       };
 
